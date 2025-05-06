@@ -30,6 +30,7 @@ export interface VillaProps {
   size: number;
   images: VillaImage[];
   amenities: Amenity[];
+  isAvailable?: boolean;
 }
 
 const VillaCard = ({
@@ -40,7 +41,8 @@ const VillaCard = ({
   capacity,
   size,
   images,
-  amenities
+  amenities,
+  isAvailable = true
 }: VillaProps) => {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
@@ -55,7 +57,13 @@ const VillaCard = ({
   };
 
   return (
-    <div className="group bg-hypnotic-dark border border-white/5 hover:border-hypnotic-accent/20 rounded-lg overflow-hidden transition-all duration-300 flex flex-col h-full">
+    <div className="group bg-hypnotic-dark border border-white/5 hover:border-hypnotic-accent/20 rounded-lg overflow-hidden transition-all duration-300 flex flex-col h-full relative">
+      {!isAvailable && (
+        <div className="absolute top-0 left-0 right-0 bg-black/70 text-white py-2 px-4 z-10 text-center">
+          Currently Unavailable
+        </div>
+      )}
+      
       <div className="relative">
         <div 
           className="h-64 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
@@ -107,8 +115,9 @@ const VillaCard = ({
           <Button 
             onClick={() => setIsBookingFormOpen(true)}
             className="bg-hypnotic-accent hover:bg-hypnotic-accent/90"
+            disabled={!isAvailable}
           >
-            Book Now
+            {isAvailable ? "Book Now" : "Unavailable"}
           </Button>
         </div>
       </div>
