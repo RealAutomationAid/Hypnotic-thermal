@@ -8,8 +8,9 @@ import AdminReservations from '@/components/admin/AdminReservations';
 import AdminTaskBoard from '@/components/admin/AdminTaskBoard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus } from 'lucide-react';
+import { Plus, Mail } from 'lucide-react';
 import { VillaProps } from '@/components/VillaCard';
+import { Link } from 'react-router-dom';
 
 const Admin = () => {
   const [isAddVillaModalOpen, setIsAddVillaModalOpen] = useState(false);
@@ -34,7 +35,19 @@ const Admin = () => {
     <div className="min-h-screen bg-hypnotic-dark text-white">
       <Header />
       <main className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-light mb-8">Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-light">Admin Dashboard</h1>
+          <Button 
+            asChild
+            variant="outline"
+            className="flex items-center gap-2 border-hypnotic-accent text-hypnotic-accent"
+          >
+            <Link to="/admin/communication">
+              <Mail size={16} />
+              Communication Management
+            </Link>
+          </Button>
+        </div>
         
         <Tabs defaultValue="villas" className="w-full">
           <TabsList className="bg-hypnotic-darker mb-8">
