@@ -2,11 +2,28 @@
 import { useState } from "react";
 import VillaCard, { VillaProps } from "./VillaCard";
 import { initialVillasData } from "@/data/villas";
+import { Dog, Wifi, Users, Bed } from 'lucide-react';
+import { Amenity } from "./VillaCard";
 
 const VillasSection = () => {
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
   
-  const villas = initialVillasData;
+  // Define amenities map
+  const amenitiesMap: Record<string, Amenity> = {
+    wifi: { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
+    petFriendly: { icon: <Dog className="h-4 w-4" />, label: "Pet Friendly" },
+    kingBed: { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
+    queenBed: { icon: <Bed className="h-4 w-4" />, label: "Queen Size Bed" },
+    capacity2: { icon: <Users className="h-4 w-4" />, label: "2 Guests" },
+    capacity4: { icon: <Users className="h-4 w-4" />, label: "4 Guests" },
+    capacity6: { icon: <Users className="h-4 w-4" />, label: "6 Guests" }
+  };
+  
+  // Process villas data to include actual amenity objects
+  const villas: VillaProps[] = initialVillasData.map(villa => ({
+    ...villa,
+    amenities: (villa as any).amenityIds.map((id: string) => amenitiesMap[id])
+  }));
   
   const categories = [
     { id: 1, name: "Couples", filter: (villa: VillaProps) => villa.capacity === 2 },

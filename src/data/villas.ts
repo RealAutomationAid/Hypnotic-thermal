@@ -1,8 +1,7 @@
 
-import { Dog, Wifi, Users, Bed } from 'lucide-react';
 import { VillaProps } from '@/components/VillaCard';
 
-export const initialVillasData: VillaProps[] = [
+export const initialVillasData: Omit<VillaProps, "amenities">[] & { amenityIds: string[] }[] = [
   {
     id: 1,
     name: "Serenity Villa",
@@ -25,11 +24,7 @@ export const initialVillasData: VillaProps[] = [
         alt: "Serenity Villa Pool"
       }
     ],
-    amenities: [
-      { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
-      { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
-      { icon: <Users className="h-4 w-4" />, label: "2 Guests" }
-    ]
+    amenityIds: ["wifi", "kingBed", "capacity2"]
   },
   {
     id: 2,
@@ -53,12 +48,7 @@ export const initialVillasData: VillaProps[] = [
         alt: "Harmony Villa Thermal Pool"
       }
     ],
-    amenities: [
-      { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
-      { icon: <Dog className="h-4 w-4" />, label: "Pet Friendly" },
-      { icon: <Bed className="h-4 w-4" />, label: "Queen Size Bed" },
-      { icon: <Users className="h-4 w-4" />, label: "4 Guests" }
-    ]
+    amenityIds: ["wifi", "petFriendly", "queenBed", "capacity4"]
   },
   {
     id: 3,
@@ -82,12 +72,7 @@ export const initialVillasData: VillaProps[] = [
         alt: "Tranquility Villa Garden"
       }
     ],
-    amenities: [
-      { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
-      { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
-      { icon: <Bed className="h-4 w-4" />, label: "Queen Size Bed" },
-      { icon: <Users className="h-4 w-4" />, label: "4 Guests" }
-    ]
+    amenityIds: ["wifi", "kingBed", "queenBed", "capacity4"]
   },
   {
     id: 4,
@@ -111,12 +96,7 @@ export const initialVillasData: VillaProps[] = [
         alt: "Zen Garden Villa Garden"
       }
     ],
-    amenities: [
-      { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
-      { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
-      { icon: <Dog className="h-4 w-4" />, label: "Pet Friendly" },
-      { icon: <Users className="h-4 w-4" />, label: "2 Guests" }
-    ]
+    amenityIds: ["wifi", "kingBed", "petFriendly", "capacity2"]
   },
   {
     id: 5,
@@ -140,11 +120,6 @@ export const initialVillasData: VillaProps[] = [
         alt: "Infinity Villa Pool"
       }
     ],
-    amenities: [
-      { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
-      { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
-      { icon: <Bed className="h-4 w-4" />, label: "Queen Size Bed" },
-      { icon: <Users className="h-4 w-4" />, label: "6 Guests" }
-    ]
+    amenityIds: ["wifi", "kingBed", "queenBed", "capacity6"]
   }
 ];

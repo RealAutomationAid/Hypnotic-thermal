@@ -11,25 +11,39 @@ import {
 import { 
   Edit, 
   Trash, 
-  Image, 
-  Check, 
-  X, 
   Dog
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { VillaProps } from '@/components/VillaCard';
 import { useToast } from '@/hooks/use-toast';
-
-// Get initial villas data from the VillasSection
 import { initialVillasData } from '@/data/villas';
+import { Amenity } from '@/components/VillaCard';
+import { Dog as DogIcon, Wifi, Users, Bed } from 'lucide-react';
 
 interface AdminVillasListProps {
   onEditVilla: (villa: VillaProps) => void;
 }
 
 const AdminVillasList = ({ onEditVilla }: AdminVillasListProps) => {
-  const [villas, setVillas] = useState<VillaProps[]>(initialVillasData);
+  // Create amenities map
+  const amenitiesMap: Record<string, Amenity> = {
+    wifi: { icon: <Wifi className="h-4 w-4" />, label: "Free Wi-Fi" },
+    petFriendly: { icon: <DogIcon className="h-4 w-4" />, label: "Pet Friendly" },
+    kingBed: { icon: <Bed className="h-4 w-4" />, label: "King Size Bed" },
+    queenBed: { icon: <Bed className="h-4 w-4" />, label: "Queen Size Bed" },
+    capacity2: { icon: <Users className="h-4 w-4" />, label: "2 Guests" },
+    capacity4: { icon: <Users className="h-4 w-4" />, label: "4 Guests" },
+    capacity6: { icon: <Users className="h-4 w-4" />, label: "6 Guests" }
+  };
+  
+  // Process villas data to include actual amenity objects
+  const processedVillas: VillaProps[] = initialVillasData.map(villa => ({
+    ...villa,
+    amenities: (villa as any).amenityIds.map((id: string) => amenitiesMap[id])
+  }));
+  
+  const [villas, setVillas] = useState<VillaProps[]>(processedVillas);
   const { toast } = useToast();
   
   const toggleAvailability = (id: number) => {
@@ -58,7 +72,7 @@ const AdminVillasList = ({ onEditVilla }: AdminVillasListProps) => {
             newAmenities = newAmenities.filter(a => a.label !== "Pet Friendly");
           } else {
             // Add pet friendly amenity if not present
-            newAmenities.push({ icon: <Dog className="h-4 w-4" />, label: "Pet Friendly" });
+            newAmenities.push(amenitiesMap.petFriendly);
           }
           
           return { ...villa, amenities: newAmenities };

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { X, Plus, Trash, DragHorizontal, Image, Dog, Wifi, Users, Bed } from 'lucide-react';
+import { X, Plus, Trash, Image, Dog, Wifi, Users, Bed } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
