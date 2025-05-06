@@ -8,8 +8,22 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 import { useForm } from 'react-hook-form';
 import { Plus, UserPlus, Clock, Check } from 'lucide-react';
 
+type TaskStatus = 'todo' | 'inProgress' | 'done';
+type TaskPriority = 'low' | 'medium' | 'high';
+
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  assignedTo: string;
+  dueDate: string;
+  reservationId: number | null;
+  priority: TaskPriority;
+}
+
 // Mock task data
-const initialTasks = [
+const initialTasks: Task[] = [
   {
     id: 1,
     title: 'Clean Villa 2 after checkout',
@@ -62,20 +76,6 @@ const initialTasks = [
   }
 ];
 
-type TaskStatus = 'todo' | 'inProgress' | 'done';
-type TaskPriority = 'low' | 'medium' | 'high';
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  status: TaskStatus;
-  assignedTo: string;
-  dueDate: string;
-  reservationId: number | null;
-  priority: TaskPriority;
-}
-
 const AdminTaskBoard = () => {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
@@ -101,7 +101,7 @@ const AdminTaskBoard = () => {
       assignedTo: data.assignedTo,
       dueDate: data.dueDate,
       reservationId: data.reservationId ? parseInt(data.reservationId) : null,
-      priority: data.priority,
+      priority: data.priority as TaskPriority,
     };
     
     setTasks([...tasks, newTask]);
