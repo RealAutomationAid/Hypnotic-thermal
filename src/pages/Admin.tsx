@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -8,66 +7,103 @@ import AdminReservations from '@/components/admin/AdminReservations';
 import AdminTaskBoard from '@/components/admin/AdminTaskBoard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Mail } from 'lucide-react';
+import { Plus, Mail, LogOut } from 'lucide-react';
 import { VillaProps } from '@/components/VillaCard';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import AppwriteAuth from '@/lib/AppwriteService';
 
 const Admin = () => {
   const [isAddVillaModalOpen, setIsAddVillaModalOpen] = useState(false);
   const [editingVilla, setEditingVilla] = useState<VillaProps | null>(null);
-  
-  const handleAddVilla = () => {
+  const [activeTab, setActiveTab] = useState("villas");
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      // Use the simplified service that won't fail even if Appwrite has issues
+      await AppwriteAuth.logout();
+      
+      // If context logout is available, try that too (but don't fail if it errors)
+      if (logout) {
+        try {
+          await logout();
+        } catch (err) {
+          console.log('Context logout failed, but direct logout succeeded');
+        }
+      }
+      
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const openAddVillaModal = () => {
     setEditingVilla(null);
     setIsAddVillaModalOpen(true);
   };
-  
-  const handleEditVilla = (villa: VillaProps) => {
+
+  const openEditVillaModal = (villa: VillaProps) => {
     setEditingVilla(villa);
     setIsAddVillaModalOpen(true);
   };
-  
-  const handleCloseModal = () => {
+
+  const closeVillaModal = () => {
     setIsAddVillaModalOpen(false);
     setEditingVilla(null);
   };
 
   return (
-    <div className="min-h-screen bg-hypnotic-dark text-white">
+    <div className="min-h-screen flex flex-col bg-hypnotic-dark text-white">
       <Header />
-      <main className="container mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-light">Admin Dashboard</h1>
-          <Button 
-            asChild
-            variant="outline"
-            className="flex items-center gap-2 border-hypnotic-accent text-hypnotic-accent"
-          >
+      
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-3xl font-bold text-hypnotic-accent">Admin Dashboard</h1>
+            <p className="text-gray-400 mt-1">Manage your properties and bookings</p>
+          </div>
+          
+          <div className="flex space-x-4">
+            <Button 
+              variant="outline" 
+              className="border-hypnotic-accent text-hypnotic-accent hover:bg-hypnotic-accent hover:text-black"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+            
             <Link to="/admin/communication">
-              <Mail size={16} />
-              Communication Management
+              <Button className="bg-hypnotic-accent hover:bg-hypnotic-accent/80 text-black">
+                <Mail className="mr-2 h-4 w-4" />
+                Communications
+              </Button>
             </Link>
-          </Button>
+          </div>
         </div>
         
-        <Tabs defaultValue="villas" className="w-full">
-          <TabsList className="bg-hypnotic-darker mb-8">
-            <TabsTrigger value="villas">Villa Management</TabsTrigger>
+        {user && (
+          <p className="text-gray-400 mb-6">Logged in as: {user.name} ({user.email})</p>
+        )}
+        
+        <Tabs defaultValue="villas" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-3 mb-8">
+            <TabsTrigger value="villas">Villas</TabsTrigger>
             <TabsTrigger value="reservations">Reservations</TabsTrigger>
-            <TabsTrigger value="tasks">Task Board</TabsTrigger>
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="villas">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl font-light">Villa Management</h2>
-              <Button 
-                onClick={handleAddVilla}
-                className="bg-hypnotic-accent hover:bg-hypnotic-accent/90 flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Add New Villa
+          <TabsContent value="villas" className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <Button onClick={openAddVillaModal} className="bg-hypnotic-accent hover:bg-hypnotic-accent/80 text-black">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Villa
               </Button>
             </div>
-            <AdminVillasList onEditVilla={handleEditVilla} />
+            <AdminVillasList onEditVilla={openEditVillaModal} />
           </TabsContent>
           
           <TabsContent value="reservations">
@@ -78,14 +114,15 @@ const Admin = () => {
             <AdminTaskBoard />
           </TabsContent>
         </Tabs>
-        
-        {isAddVillaModalOpen && (
-          <AdminVillaModal 
-            villa={editingVilla} 
-            onClose={handleCloseModal} 
-          />
-        )}
       </main>
+      
+      {isAddVillaModalOpen && (
+        <AdminVillaModal 
+          villa={editingVilla} 
+          onClose={closeVillaModal} 
+        />
+      )}
+      
       <Footer />
     </div>
   );

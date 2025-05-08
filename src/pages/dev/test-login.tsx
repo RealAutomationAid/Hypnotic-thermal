@@ -1,0 +1,142 @@
+import React, { useState, useEffect } from 'react';
+import { Client, Account } from 'appwrite';
+
+const TestLoginPage: React.FC = () => {
+  const [email, setEmail] = useState('admin@admin.com');
+  const [password, setPassword] = useState('admin123');
+  const [result, setResult] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [userDetails, setUserDetails] = useState<any>(null);
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setResult(null);
+    setIsSuccess(false);
+    setUserDetails(null);
+
+    try {
+      // Initialize Appwrite client
+      const client = new Client();
+      client
+        .setEndpoint('https://fra.cloud.appwrite.io/v1')
+        .setProject('681bae9700045d80a790');
+      
+      const account = new Account(client);
+      
+      // First try to delete any existing sessions
+      try {
+        await account.deleteSessions();
+        console.log('Deleted existing sessions');
+      } catch (e) {
+        console.log('No active sessions to delete');
+      }
+      
+      console.log(`Attempting login with: ${email} / ${password}`);
+      
+      // Try to login with email session
+      try {
+        // @ts-ignore
+        const session = await account.createEmailSession(email, password);
+        console.log('Login successful with createEmailSession:', session);
+        
+        // Get user details
+        const user = await account.get();
+        console.log('User details:', user);
+        
+        setIsSuccess(true);
+        setUserDetails(user);
+        setResult('Login successful! You can now redirect to the admin panel.');
+      } catch (emailSessionError) {
+        console.error('Error with createEmailSession:', emailSessionError);
+        
+        // Try with alternative method for older SDK versions
+        try {
+          console.log('Trying alternative login method...');
+          // @ts-ignore
+          const session = await account.createSession(email, password);
+          console.log('Login successful with createSession:', session);
+          
+          // Get user details
+          const user = await account.get();
+          console.log('User details:', user);
+          
+          setIsSuccess(true);
+          setUserDetails(user);
+          setResult('Login successful with alternative method! You can now redirect to the admin panel.');
+        } catch (sessionError) {
+          console.error('Error with createSession:', sessionError);
+          throw new Error('All login methods failed');
+        }
+      }
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      setIsSuccess(false);
+      setResult(`Login failed: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6">Test Appwrite Login</h1>
+        <p className="mb-4">This page tests direct login to Appwrite.</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          
+          <button
+            onClick={handleLogin}
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+          >
+            {isLoading ? 'Logging in...' : 'Test Login'}
+          </button>
+        </div>
+        
+        {result && (
+          <div className={`mt-4 p-3 rounded-md ${isSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <p>{result}</p>
+            
+            {userDetails && (
+              <div className="mt-2">
+                <p><strong>User ID:</strong> {userDetails.$id}</p>
+                <p><strong>Name:</strong> {userDetails.name}</p>
+                <p><strong>Email:</strong> {userDetails.email}</p>
+                <p><strong>Email Verified:</strong> {userDetails.emailVerification ? 'Yes' : 'No'}</p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div className="mt-6 text-sm text-gray-600">
+          <p>Default Credentials:</p>
+          <p>Email: admin@admin.com</p>
+          <p>Password: admin123</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TestLoginPage; 
