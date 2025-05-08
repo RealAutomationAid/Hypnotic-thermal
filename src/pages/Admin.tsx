@@ -11,7 +11,7 @@ import { Plus, Mail, LogOut } from 'lucide-react';
 import { VillaProps } from '@/components/VillaCard';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import AppwriteAuth from '@/lib/AppwriteService';
+import SupabaseAuth from '@/lib/SupabaseService';
 
 const Admin = () => {
   const [isAddVillaModalOpen, setIsAddVillaModalOpen] = useState(false);
@@ -22,10 +22,10 @@ const Admin = () => {
 
   const handleLogout = async () => {
     try {
-      // Use the simplified service that won't fail even if Appwrite has issues
-      await AppwriteAuth.logout();
+      // Use the Supabase service
+      await SupabaseAuth.logout();
       
-      // If context logout is available, try that too (but don't fail if it errors)
+      // If context logout is available, use that too
       if (logout) {
         try {
           await logout();
@@ -86,7 +86,7 @@ const Admin = () => {
         </div>
         
         {user && (
-          <p className="text-gray-400 mb-6">Logged in as: {user.name} ({user.email})</p>
+          <p className="text-gray-400 mb-6">Logged in as: {user.email}</p>
         )}
         
         <Tabs defaultValue="villas" value={activeTab} onValueChange={setActiveTab} className="w-full">

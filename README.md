@@ -1,56 +1,67 @@
-# Welcome to your Lovable project
+# Hypnotic Villa Serenity UI with Supabase
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/d110fd6b-dbf8-483b-820a-91d68de768e9
+This project is a React-based front-end for the Hypnotic Villa Serenity application, using Supabase for authentication and data storage.
 
-## How can I edit this code?
+## Environment Setup
 
-There are several ways of editing your application.
+Before running the project, you need to set up your environment variables:
 
-**Use Lovable**
+1. Create a `.env` file in the root directory with the following:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d110fd6b-dbf8-483b-820a-91d68de768e9) and start prompting.
+```
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SB_PROJECT_ID=your-project-id
+```
 
-Changes made via Lovable will be committed automatically to this repo.
+2. Replace the values with your actual Supabase project credentials.
 
-**Use your preferred IDE**
+## Supabase Database Setup
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+This project uses Supabase as its backend service. To set up the required database tables and policies:
+
+1. Log in to your Supabase project dashboard
+2. Navigate to the SQL Editor
+3. Run the script found in `src/scripts/create-supabase-tables.sql`
+
+## Getting Started
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 Follow these steps:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd hypnotic-villa-serenity-ui
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install the necessary dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server with auto-reloading and an instant preview
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Key Features
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Authentication with Supabase Auth
+- Role-based access control
+- Todo example with full CRUD operations
+- Protected routes for admin access
 
-**Use GitHub Codespaces**
+## Testing the Supabase Integration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Visit the test page at `/dev/test-supabase` to see a working example of Supabase integration with:
 
-## What technologies are used for this project?
+- Connection status display
+- Todo management with Supabase
+- Implementation details and code examples
+
+## Technologies
 
 This project is built with:
 
@@ -59,15 +70,23 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase (Auth, Database, Storage)
 
-## How can I deploy this project?
+## Appwrite to Supabase Migration
 
-Simply open [Lovable](https://lovable.dev/projects/d110fd6b-dbf8-483b-820a-91d68de768e9) and click on Share -> Publish.
+This project has been migrated from Appwrite to Supabase. For detailed information about the migration:
 
-## Can I connect a custom domain to my Lovable project?
+1. Check `src/docs/supabase-migration-guide.md` for a comprehensive guide
+2. Review the SQL setup script in `src/scripts/create-supabase-tables.sql`
 
-Yes, you can!
+## Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- `src/lib/supabase.ts` - Supabase client and core authentication functions
+- `src/lib/SupabaseService.ts` - OOP-style Supabase service
+- `src/lib/AuthContext.tsx` - React auth context using Supabase
+- `src/components/ProtectedRoute.tsx` - Authentication guard component
+- `src/pages/dev/test-supabase.tsx` - Test page for Supabase functionality
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Deployment
+
+Follow standard Vite deployment procedures or use a platform like Vercel, Netlify, or Railway.

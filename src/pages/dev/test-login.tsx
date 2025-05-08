@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Client, Account } from 'appwrite';
+import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
 const TestLoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@admin.com');
@@ -16,63 +16,84 @@ const TestLoginPage: React.FC = () => {
     setUserDetails(null);
 
     try {
-      // Initialize Appwrite client
-      const client = new Client();
-      client
-        .setEndpoint('https://fra.cloud.appwrite.io/v1')
-        .setProject('681bae9700045d80a790');
-      
-      const account = new Account(client);
-      
-      // First try to delete any existing sessions
-      try {
-        await account.deleteSessions();
-        console.log('Deleted existing sessions');
-      } catch (e) {
-        console.log('No active sessions to delete');
-      }
-      
       console.log(`Attempting login with: ${email} / ${password}`);
       
-      // Try to login with email session
-      try {
-        // @ts-ignore
-        const session = await account.createEmailSession(email, password);
-        console.log('Login successful with createEmailSession:', session);
-        
+      // Try to login with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('Login successful:', data);
+      
+      if (data.user) {
         // Get user details
-        const user = await account.get();
-        console.log('User details:', user);
-        
         setIsSuccess(true);
-        setUserDetails(user);
+        setUserDetails(data.user);
         setResult('Login successful! You can now redirect to the admin panel.');
-      } catch (emailSessionError) {
-        console.error('Error with createEmailSession:', emailSessionError);
-        
-        // Try with alternative method for older SDK versions
-        try {
-          console.log('Trying alternative login method...');
-          // @ts-ignore
-          const session = await account.createSession(email, password);
-          console.log('Login successful with createSession:', session);
-          
-          // Get user details
-          const user = await account.get();
-          console.log('User details:', user);
-          
-          setIsSuccess(true);
-          setUserDetails(user);
-          setResult('Login successful with alternative method! You can now redirect to the admin panel.');
-        } catch (sessionError) {
-          console.error('Error with createSession:', sessionError);
-          throw new Error('All login methods failed');
-        }
+      } else {
+        throw new Error('User not found in response');
       }
     } catch (error: any) {
       console.error('Login failed:', error);
       setIsSuccess(false);
       setResult(`Login failed: ${error.message || 'Unknown error'}`);
+      
+      // If login fails, let's offer to create a test account
+      if (email === 'admin@admin.com' && password === 'admin123') {
+        setResult(`${result} Would you like to create a test account? Click "Create Test Account" below.`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleCreateTestAccount = async () => {
+    setIsLoading(true);
+    setResult(null);
+    setIsSuccess(false);
+    setUserDetails(null);
+    
+    try {
+      // Try to create a test account
+      const { data, error } = await supabase.auth.signUp({
+        email: 'admin@admin.com',
+        password: 'admin123',
+        options: {
+          data: {
+            full_name: 'Admin User',
+            role: 'admin'
+          }
+        }
+      });
+      
+      if (error) {
+        // If the error is that the user already exists, let's try to sign in
+        if (error.message.includes('already exists')) {
+          setResult('User already exists. Trying to sign in...');
+          handleLogin();
+          return;
+        }
+        throw error;
+      }
+      
+      console.log('Account created:', data);
+      
+      if (data.user) {
+        setIsSuccess(true);
+        setUserDetails(data.user);
+        setResult('Test account created successfully! You can now login with these credentials.');
+      } else {
+        throw new Error('User not created properly');
+      }
+    } catch (error: any) {
+      console.error('Account creation failed:', error);
+      setIsSuccess(false);
+      setResult(`Account creation failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -81,8 +102,8 @@ const TestLoginPage: React.FC = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
       <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6">Test Appwrite Login</h1>
-        <p className="mb-4">This page tests direct login to Appwrite.</p>
+        <h1 className="text-2xl font-bold mb-6">Test Supabase Login</h1>
+        <p className="mb-4">This page tests direct login to Supabase.</p>
         
         <div className="space-y-4">
           <div>
@@ -112,6 +133,14 @@ const TestLoginPage: React.FC = () => {
           >
             {isLoading ? 'Logging in...' : 'Test Login'}
           </button>
+          
+          <button
+            onClick={handleCreateTestAccount}
+            disabled={isLoading}
+            className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-green-400"
+          >
+            Create Test Account
+          </button>
         </div>
         
         {result && (
@@ -120,10 +149,10 @@ const TestLoginPage: React.FC = () => {
             
             {userDetails && (
               <div className="mt-2">
-                <p><strong>User ID:</strong> {userDetails.$id}</p>
-                <p><strong>Name:</strong> {userDetails.name}</p>
+                <p><strong>User ID:</strong> {userDetails.id}</p>
                 <p><strong>Email:</strong> {userDetails.email}</p>
-                <p><strong>Email Verified:</strong> {userDetails.emailVerification ? 'Yes' : 'No'}</p>
+                <p><strong>Created At:</strong> {new Date(userDetails.created_at).toLocaleString()}</p>
+                <p><strong>Email Verified:</strong> {userDetails.email_confirmed_at ? 'Yes' : 'No'}</p>
               </div>
             )}
           </div>

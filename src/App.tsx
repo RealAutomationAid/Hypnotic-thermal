@@ -2,15 +2,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import AdminCommunication from "./pages/AdminCommunication";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./lib/AuthContext";
 import TestLoginPage from "./pages/dev/test-login";
+import TestSupabase from "./pages/dev/test-supabase";
 
 const queryClient = new QueryClient();
 
@@ -27,11 +28,19 @@ const App = () => (
             
             {/* Dev Test Routes */}
             <Route path="/dev/test-login" element={<TestLoginPage />} />
+            <Route path="/dev/test-supabase" element={<TestSupabase />} />
             
             {/* Protected Admin Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin/communication" element={<AdminCommunication />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <Outlet />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Admin />} />
+              <Route path="communication" element={<AdminCommunication />} />
             </Route>
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
