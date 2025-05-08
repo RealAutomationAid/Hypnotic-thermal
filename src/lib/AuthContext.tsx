@@ -1,185 +1,130 @@
+import { supabase, loginUser, logoutUser, getCurrentUser } from './supabase';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { account, loginUser, logoutUser, getCurrentUser } from './appwrite';
+import type { Session, User } from '@supabase/supabase-js';
 
-type User = {
-  $id: string;
-  email: string;
-  name: string;
-  role?: string;
-} | null;
-
-interface AuthContextProps {
-  user: User;
-  isLoading: boolean;
-  error: string | null;
-  login: (username: string, password: string) => Promise<void>;
+// Define the shape of our auth context
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
+  checkAuth: () => Promise<User | null>;
 }
 
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+// Create the auth context with default values
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  session: null,
+  loading: true,
+  login: async () => null,
+  logout: async () => {},
+  checkAuth: async () => null,
+});
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasCheckedAuth, setHasCheckedAuth] = useState<boolean>(false);
+// Custom hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
 
-  useEffect(() => {
-    // Check if user is logged in when the app starts
-    const checkUserStatus = async () => {
-      try {
-        // First, check if we have a session in localStorage
-        const hasAttemptedLogin = localStorage.getItem('hasAttemptedLogin');
-        const isAdminLoggedIn = localStorage.getItem('adminLoggedIn');
+// AuthProvider component that wraps the app and provides auth context
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Function to check if user is authenticated
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      // Based on https://supabase.com/docs/reference/javascript/auth-getsession
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+      
+      if (session) {
+        // If we have a session, get the user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
         
-        if (!hasAttemptedLogin && !isAdminLoggedIn) {
-          // No previous login attempt, don't try to get user and trigger 401
-          setIsLoading(false);
-          setUser(null);
-          setHasCheckedAuth(true);
-          return;
-        }
-        
-        setIsLoading(true);
-        
-        // If we have adminLoggedIn flag but no user data yet, create a minimal user
-        if (isAdminLoggedIn === 'true') {
-          try {
-            // Try to get actual user data first
-            const currentUser = await getCurrentUser();
-            if (currentUser) {
-              setUser(currentUser);
-            } else {
-              // Fallback to minimal user data from localStorage
-              setUser({
-                $id: 'admin',
-                email: 'admin@admin.com',
-                name: 'Admin User',
-                role: 'admin'
-              });
-            }
-          } catch (err) {
-            // Fallback to minimal user data from localStorage
-            setUser({
-              $id: 'admin',
-              email: 'admin@admin.com',
-              name: 'Admin User',
-              role: 'admin'
-            });
-          }
-        } else {
-          // Regular flow - getCurrentUser will check localStorage flag
-          const currentUser = await getCurrentUser();
-          setUser(currentUser);
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err);
+        setUser(user);
+        setSession(session);
+      } else {
         setUser(null);
-      } finally {
-        setIsLoading(false);
-        setHasCheckedAuth(true);
+        setSession(null);
       }
-    };
-    
-    if (!hasCheckedAuth) {
-      checkUserStatus();
+      
+      return user;
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      setUser(null);
+      setSession(null);
+      return null;
+    } finally {
+      setLoading(false);
     }
-  }, [hasCheckedAuth]);
+  };
 
   // Login function
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      setError(null);
-      setIsLoading(true);
-      
-      console.log(`Attempting login with: ${username}`);
-      const session = await loginUser(username, password);
-      console.log('Login successful, session created:', session);
-      
-      // Mark that we've attempted login - this is done in loginUser now
-      // localStorage.setItem('hasAttemptedLogin', 'true');
-      
-      // After successful login, get the user data
-      try {
-        const userData = await getCurrentUser();
-        
-        if (!userData) {
-          // If there's no user data but login was successful, 
-          // create a basic admin user object
-          console.log('Using default admin user');
-          setUser({
-            $id: 'admin',
-            email: username,
-            name: 'Admin User',
-            role: 'admin'
-          });
-        } else {
-          console.log('User data retrieved:', userData);
-          setUser(userData);
-        }
-      } catch (userError) {
-        console.error('Error getting user data after login:', userError);
-        // Create default admin user
-        setUser({
-          $id: 'admin',
-          email: username,
-          name: 'Admin User',
-          role: 'admin'
-        });
+      const data = await loginUser(email, password);
+      if (data) {
+        setUser(data.user);
+        setSession(data.session);
       }
-    } catch (err: any) {
-      console.error('Login failed:', err);
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
-      throw err;
-    } finally {
-      setIsLoading(false);
+      return data;
+    } catch (error) {
+      console.error("Login failed in AuthContext:", error);
+      throw error;
     }
   };
 
   // Logout function
   const logout = async () => {
     try {
-      setIsLoading(true);
-      
-      // First clean up localStorage
-      localStorage.removeItem('hasAttemptedLogin');
-      localStorage.removeItem('adminLoggedIn');
+      await logoutUser();
       setUser(null);
-      
-      // Try to delete server sessions as a best effort
-      try {
-        await account.deleteSessions();
-      } catch (err) {
-        console.log('Could not delete sessions, but logout succeeded locally');
-      }
-    } catch (err) {
-      console.error('Logout failed:', err);
-      setError(err instanceof Error ? err.message : 'Logout failed. Please try again.');
-      throw err;
-    } finally {
-      setIsLoading(false);
+      setSession(null);
+    } catch (error) {
+      console.error("Logout failed in AuthContext:", error);
     }
   };
 
-  // Context value
+  // Set up auth state listener on mount
+  useEffect(() => {
+    checkAuth();
+    
+    // Set up Supabase auth state change listener
+    // Based on https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event);
+        
+        if (session) {
+          setUser(session.user);
+          setSession(session);
+        } else {
+          setUser(null);
+          setSession(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // Clean up subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const value = {
     user,
-    isLoading,
-    error,
+    session,
+    loading,
     login,
-    logout
+    logout,
+    checkAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// Custom hook to use the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  
-  return context;
 }; 

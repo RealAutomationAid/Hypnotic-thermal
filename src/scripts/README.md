@@ -1,84 +1,65 @@
-# Appwrite Admin User Creation
+# Supabase Admin User Creation
 
-This directory contains scripts for creating and managing admin users in your Appwrite instance for the Hypnotic Villas admin portal.
+This directory contains scripts for creating and managing admin users in your Supabase instance for the Hypnotic Villas admin portal.
 
 ## Prerequisites
 
-Before running any scripts, make sure you have:
+Before running any scripts in this directory, ensure you have:
 
-1. Node.js installed on your system
-2. Access to an Appwrite instance at https://fra.cloud.appwrite.io/v1
-3. An Appwrite API key with appropriate permissions:
-   - `users.write` - Required to create and update users
-   - `teams.write` - Required to create/manage admin teams (optional but recommended)
+1. Node.js installed (v14+)
+2. Access to a Supabase project
+3. A Supabase service role key with appropriate permissions
 
-## Creating an Admin User
+## Available Scripts
 
-We provide a script that creates a verified admin user that can immediately log into the admin portal without any verification steps.
+### Testing Credentials
 
-### Step 1: Install dependencies
+- `test-supabase-login.js` - Test your Supabase login credentials
 
-From the project root directory, run:
+### Admin User Management
 
-```bash
-npm install
-```
+- `create-supabase-admin.js` - Create an admin user with the proper roles
 
-### Step 2: Get an Appwrite API Key
+## Getting Started
 
-1. Log into your Appwrite console at https://fra.cloud.appwrite.io/console
-2. Navigate to "Project" > "API Keys"
-3. Create a new API key with the following permissions:
-   - `users.write`
-   - `teams.write`
-4. Copy the API key for use in the next step
-
-### Step 3: Run the admin creation script
-
-From the project root directory, run:
+### Step 1: Install Dependencies
 
 ```bash
-node src/scripts/create-verified-admin.js
+npm install @supabase/supabase-js
 ```
 
-The script can be run in two ways:
+### Step 2: Get a Supabase Service Role Key
 
-#### Option 1: Using environment variables
+1. Log into your Supabase dashboard
+2. Select your project
+3. Go to Project Settings > API
+4. Find and copy your service_role key (Warning: This key has admin privileges)
+
+### Step 3: Create an Admin User
+
+Run the admin user creation script:
 
 ```bash
-APPWRITE_API_KEY="your-api-key-here" node src/scripts/create-verified-admin.js
+node src/scripts/create-supabase-admin.js
 ```
 
-#### Option 2: Enter values when prompted
-
-Simply run the script without environment variables, and you'll be prompted to enter required values:
+Or with environment variables:
 
 ```bash
-node src/scripts/create-verified-admin.js
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key" node src/scripts/create-supabase-admin.js
 ```
 
-### Step 4: Test the login
-
-Once the script completes successfully, you'll be provided with login credentials. Go to:
-
-```
-http://localhost:8081
-```
-
-And log in with the provided email and password.
+Follow the prompts to enter admin user details.
 
 ## Troubleshooting
 
-If you encounter any issues:
+If you encounter issues:
 
-1. **Invalid Credentials Error**: This typically means the user was created but wasn't properly verified. Run the script again and make sure it completes the verification step.
+1. **Permission Errors**: Ensure your service role key has the necessary permissions.
+2. **Validation Errors**: Check that your admin details meet requirements (email format, password complexity).
+3. **Connection Issues**: Verify your Supabase URL is correct.
+4. **Supabase Connection Issues**: Ensure your Supabase instance is running and the URL is correct.
 
-2. **401 Unauthorized**: Check that your API key has the required permissions.
+## Security Note
 
-3. **User Already Exists**: The script will detect existing users with the same email and offer to replace them. If you're having login issues, choose to recreate the user.
-
-4. **Appwrite Connection Issues**: Ensure your Appwrite instance is running and the endpoint URL is correct.
-
-## Custom Configuration
-
-By default, the script will generate a secure random password. You can customize all settings when prompted during script execution, or edit the configuration directly in the script. 
+The service role key has unrestricted access to your database. Never commit it to your repository or share it publicly. Always use environment variables or secure methods to provide it to scripts. 

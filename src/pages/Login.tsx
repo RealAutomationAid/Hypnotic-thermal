@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { AlertCircle, Info, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import AppwriteAuth from '@/lib/AppwriteService';
+import SupabaseAuth from '@/lib/SupabaseService';
+import { useAuth } from '@/lib/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('admin@admin.com');
@@ -16,27 +17,37 @@ const Login = () => {
   const [loginStatus, setLoginStatus] = useState<string | null>(null);
   const [directLoginSuccess, setDirectLoginSuccess] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
   
-  // Check if already logged in via localStorage on component mount
+  // Check if already logged in via auth context on component mount
   useEffect(() => {
-    const isLoggedIn = AppwriteAuth.isLoggedIn();
-    if (isLoggedIn) {
-      setDirectLoginSuccess(true);
-      setLoginStatus('Already logged in! Redirecting...');
-      
-      // Add a small delay before redirect
-      setTimeout(() => {
-        navigate('/admin');
-      }, 500);
-    }
-  }, [navigate]);
+    const checkAuth = async () => {
+      try {
+        const isAuthenticated = await SupabaseAuth.isAuthenticated();
+        if (isAuthenticated || user) {
+          setDirectLoginSuccess(true);
+          setLoginStatus('Already logged in! Redirecting...');
+          
+          // Add a small delay before redirect
+          setTimeout(() => {
+            navigate('/admin');
+          }, 500);
+        }
+      } catch (err) {
+        console.error('Error checking authentication:', err);
+      }
+    };
+    
+    checkAuth();
+  }, [navigate, user]);
 
-  // Simple login function that bypasses API rate limits
+  // Login function using Supabase
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If already logged in, just redirect
-    if (AppwriteAuth.isLoggedIn()) {
+    // Recheck auth status
+    const isAuthenticated = await SupabaseAuth.isAuthenticated();
+    if (isAuthenticated) {
       navigate('/admin');
       return;
     }
@@ -51,24 +62,26 @@ const Login = () => {
     setLoginStatus('Logging in...');
 
     try {
-      // Our improved service will bypass API rate limits
-      await AppwriteAuth.login(email, password);
+      // Login using Supabase
+      const response = await SupabaseAuth.login(email, password);
       
-      // Set UI success state
-      setDirectLoginSuccess(true);
-      setLoginStatus('Login successful, redirecting...');
-      
-      // Redirect after a brief delay
-      setTimeout(() => {
-        navigate('/admin');
-      }, 500);
+      if (response) {
+        // Set UI success state
+        setDirectLoginSuccess(true);
+        setLoginStatus('Login successful, redirecting...');
+        
+        // Redirect after a brief delay
+        setTimeout(() => {
+          navigate('/admin');
+        }, 500);
+      }
       
     } catch (err: any) {
       console.error('Login failed:', err);
       
       // Special handling for rate limit errors
-      if (err?.code === 429) {
-        setError('Appwrite rate limit reached. Try again in a moment, or refresh the page.');
+      if (err?.status === 429) {
+        setError('Rate limit reached. Try again in a moment, or refresh the page.');
       } else {
         setError(err?.message || 'Login failed. Check credentials and try again.');
       }
@@ -79,22 +92,50 @@ const Login = () => {
     }
   };
 
-  // Forced bypass login (for when rate limits hit)
-  const handleForceLogin = () => {
-    localStorage.setItem('adminLoggedIn', 'true');
-    localStorage.setItem('hasAttemptedLogin', 'true');
-    localStorage.setItem('adminUser', JSON.stringify({
-      email: 'admin@admin.com',
-      name: 'Admin User',
-      role: 'admin'
-    }));
-    
-    setDirectLoginSuccess(true);
-    setLoginStatus('Login successful, redirecting...');
-    
-    setTimeout(() => {
-      navigate('/admin');
-    }, 500);
+  // Create demo account in Supabase if needed
+  const handleDemoLogin = async () => {
+    try {
+      setIsSubmitting(true);
+      setLoginStatus('Setting up demo access...');
+      
+      // Try to login first
+      try {
+        await SupabaseAuth.login('admin@admin.com', 'admin123');
+        setDirectLoginSuccess(true);
+        setLoginStatus('Login successful, redirecting...');
+        
+        setTimeout(() => {
+          navigate('/admin');
+        }, 500);
+        return;
+      } catch (loginErr) {
+        // If login fails, try to create the user
+        try {
+          await SupabaseAuth.createUser('admin@admin.com', 'admin123', 'Admin User');
+          // Then login
+          await SupabaseAuth.login('admin@admin.com', 'admin123');
+          
+          setDirectLoginSuccess(true);
+          setLoginStatus('Demo account created! Redirecting...');
+          
+          setTimeout(() => {
+            navigate('/admin');
+          }, 500);
+        } catch (createErr: any) {
+          if (createErr.message?.includes('already exists')) {
+            setError('Admin account exists but credentials may be different. Please check and try again.');
+          } else {
+            throw createErr;
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Demo login failed:', err);
+      setError(err?.message || 'Failed to set up demo access. Please try again.');
+      setLoginStatus(null);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -121,16 +162,6 @@ const Login = () => {
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       {error}
-                      {error.includes('rate limit') && (
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="text-blue-300 p-0 h-auto mt-1 underline"
-                          onClick={handleForceLogin}
-                        >
-                          Click here to bypass rate limits
-                        </Button>
-                      )}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -179,9 +210,9 @@ const Login = () => {
                     type="button"
                     variant="outline"
                     className="w-full border-gray-700 hover:bg-gray-800 text-gray-300"
-                    onClick={handleForceLogin}
+                    onClick={handleDemoLogin}
                   >
-                    Bypass Login (Always Works)
+                    Create Demo Account
                   </Button>
                 </div>
               </div>
@@ -192,7 +223,7 @@ const Login = () => {
           <p className="font-semibold mb-1">Default Admin Credentials:</p>
           <p>• Email: admin@admin.com</p>
           <p>• Password: admin123</p>
-          <p className="mt-2 text-xs">Use the bypass button if you encounter rate limits.</p>
+          <p className="mt-2 text-xs">Use the demo account button if you don't have an account yet.</p>
         </CardFooter>
       </Card>
     </div>

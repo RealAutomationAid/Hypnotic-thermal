@@ -1,51 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { ReactNode, useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import AppwriteAuth from '@/lib/AppwriteService';
 
 interface ProtectedRouteProps {
-  children?: React.ReactNode;
-  allowedRoles?: string[];
+  children: ReactNode;
+  redirectPath?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  allowedRoles = ['admin'] 
-}) => {
-  const { user, isLoading } = useAuth();
-  const [checkingLocal, setCheckingLocal] = useState<boolean>(true);
-  
-  // Check authentication immediately using local storage
+export const ProtectedRoute = ({
+  children,
+  redirectPath = '/login',
+}: ProtectedRouteProps) => {
+  const location = useLocation();
+  const { user, loading, checkAuth } = useAuth();
+  const [isVerifying, setIsVerifying] = useState(true);
+
   useEffect(() => {
-    // Quick check using the AppwriteAuth service
-    setCheckingLocal(false);
-  }, []);
-  
-  // If still checking authentication status, show a loading spinner
-  if (isLoading && checkingLocal) {
+    const verifyAuth = async () => {
+      try {
+        setIsVerifying(true);
+        await checkAuth();
+      } catch (error) {
+        console.error('Auth verification failed:', error);
+      } finally {
+        setIsVerifying(false);
+      }
+    };
+
+    verifyAuth();
+  }, [checkAuth]);
+
+  // Show loading state while checking authentication
+  if (loading || isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-hypnotic-dark text-white">
-        <div className="p-4 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hypnotic-accent mx-auto"></div>
-          <p className="mt-3">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-  
-  // Primary check using AppwriteAuth service
-  const isLocallyAuthenticated = AppwriteAuth.isLoggedIn();
-  
-  // Secondary check using context
-  const isContextAuthenticated = user && allowedRoles.includes(user.role || 'admin');
-  
-  // Combined check - either method is sufficient
-  if (!isLocallyAuthenticated && !isContextAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  // If authenticated, render the protected content
-  return children ? <>{children}</> : <Outlet />;
-};
 
-export default ProtectedRoute; 
+  // If user is not authenticated, redirect to login
+  if (!user) {
+    return <Navigate to={redirectPath} state={{ from: location }} replace />;
+  }
+
+  // If user is authenticated, render the protected content
+  return <>{children}</>;
+}; 
