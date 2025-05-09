@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import SupabaseAuth from '../../lib/SupabaseService';
 
 const TestLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('admin@admin.com');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
+  const [loginMethod, setLoginMethod] = useState<'direct' | 'service'>('direct');
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -16,16 +18,32 @@ const TestLoginPage: React.FC = () => {
     setUserDetails(null);
 
     try {
-      console.log(`Attempting login with: ${email} / ${password}`);
+      console.log(`Attempting login with email: ${username}`);
       
-      // Try to login with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Use the email directly
+      const email = username;
       
-      if (error) {
-        throw error;
+      let data;
+      
+      // Try login with selected method
+      if (loginMethod === 'direct') {
+        console.log('Using direct Supabase client method');
+        // Try to login with Supabase directly
+        const response = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (response.error) {
+          throw response.error;
+        }
+        
+        data = response.data;
+      } else {
+        console.log('Using SupabaseAuth service method');
+        // Try to login with SupabaseAuth service
+        const response = await SupabaseAuth.login(email, password);
+        data = response;
       }
       
       console.log('Login successful:', data);
@@ -35,6 +53,9 @@ const TestLoginPage: React.FC = () => {
         setIsSuccess(true);
         setUserDetails(data.user);
         setResult('Login successful! You can now redirect to the admin panel.');
+        
+        // Store successful auth in localStorage for auth persistence
+        localStorage.setItem('adminLoggedIn', 'true');
       } else {
         throw new Error('User not found in response');
       }
@@ -42,11 +63,6 @@ const TestLoginPage: React.FC = () => {
       console.error('Login failed:', error);
       setIsSuccess(false);
       setResult(`Login failed: ${error.message || 'Unknown error'}`);
-      
-      // If login fails, let's offer to create a test account
-      if (email === 'admin@admin.com' && password === 'admin123') {
-        setResult(`${result} Would you like to create a test account? Click "Create Test Account" below.`);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -59,14 +75,17 @@ const TestLoginPage: React.FC = () => {
     setUserDetails(null);
     
     try {
+      // Convert username to email format for Supabase
+      const email = `${username}@example.com`;
+      
       // Try to create a test account
       const { data, error } = await supabase.auth.signUp({
-        email: 'admin@admin.com',
-        password: 'admin123',
+        email,
+        password,
         options: {
           data: {
-            full_name: 'Admin User',
-            role: 'admin'
+            full_name: 'Geri',
+            username: username
           }
         }
       });
@@ -110,9 +129,10 @@ const TestLoginPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter your email address"
             />
           </div>
           
@@ -123,7 +143,34 @@ const TestLoginPage: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter your password"
             />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Login Method</label>
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loginMethod" 
+                  checked={loginMethod === 'direct'}
+                  onChange={() => setLoginMethod('direct')}
+                  className="mr-2"
+                />
+                Direct Supabase
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="loginMethod"
+                  checked={loginMethod === 'service'}
+                  onChange={() => setLoginMethod('service')}
+                  className="mr-2"
+                />
+                Auth Service
+              </label>
+            </div>
           </div>
           
           <button
@@ -152,16 +199,15 @@ const TestLoginPage: React.FC = () => {
                 <p><strong>User ID:</strong> {userDetails.id}</p>
                 <p><strong>Email:</strong> {userDetails.email}</p>
                 <p><strong>Created At:</strong> {new Date(userDetails.created_at).toLocaleString()}</p>
-                <p><strong>Email Verified:</strong> {userDetails.email_confirmed_at ? 'Yes' : 'No'}</p>
               </div>
             )}
           </div>
         )}
         
         <div className="mt-6 text-sm text-gray-600">
-          <p>Default Credentials:</p>
-          <p>Email: admin@admin.com</p>
-          <p>Password: admin123</p>
+          <p>Suggested Test Credentials:</p>
+          <p>Email: millenium@abv.bg</p>
+          <p>Note: Use the password you created in Supabase</p>
         </div>
       </div>
     </div>

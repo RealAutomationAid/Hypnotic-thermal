@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AdminVillasList from '@/components/admin/AdminVillasList';
@@ -17,8 +17,39 @@ const Admin = () => {
   const [isAddVillaModalOpen, setIsAddVillaModalOpen] = useState(false);
   const [editingVilla, setEditingVilla] = useState<VillaProps | null>(null);
   const [activeTab, setActiveTab] = useState("villas");
+  const [username, setUsername] = useState<string | null>(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Extract username when component mounts and verify authentication
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      try {
+        // Double-check authentication state when component mounts
+        const isAuthenticated = await SupabaseAuth.isAuthenticated();
+        
+        if (!isAuthenticated && !user) {
+          console.log("Admin verification failed - redirecting to login");
+          navigate('/login');
+          return;
+        }
+        
+        // Set adminLoggedIn flag
+        localStorage.setItem('adminLoggedIn', 'true');
+        
+        // Extract username from user data
+        if (user) {
+          const extractedUsername = SupabaseAuth.getUsernameFromUser(user);
+          setUsername(extractedUsername);
+        }
+      } catch (error) {
+        console.error("Error verifying admin access:", error);
+        navigate('/login');
+      }
+    };
+    
+    verifyAdmin();
+  }, [user, navigate]);
 
   const handleLogout = async () => {
     try {
@@ -34,6 +65,10 @@ const Admin = () => {
         }
       }
       
+      // Clear localStorage flags
+      localStorage.removeItem('adminLoggedIn');
+      
+      // Navigate to login page
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -85,8 +120,8 @@ const Admin = () => {
           </div>
         </div>
         
-        {user && (
-          <p className="text-gray-400 mb-6">Logged in as: {user.email}</p>
+        {username && (
+          <p className="text-gray-400 mb-6">Logged in as: {username}</p>
         )}
         
         <Tabs defaultValue="villas" value={activeTab} onValueChange={setActiveTab} className="w-full">

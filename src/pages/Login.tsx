@@ -1,138 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import SupabaseAuth from '@/lib/SupabaseService';
-import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const Login = () => {
-  const [email, setEmail] = useState('admin@admin.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loginStatus, setLoginStatus] = useState<string | null>(null);
-  const [directLoginSuccess, setDirectLoginSuccess] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
   
-  // Check if already logged in via auth context on component mount
+  // Check if user is already logged in
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const isAuthenticated = await SupabaseAuth.isAuthenticated();
-        if (isAuthenticated || user) {
-          setDirectLoginSuccess(true);
-          setLoginStatus('Already logged in! Redirecting...');
-          
-          // Add a small delay before redirect
-          setTimeout(() => {
-            navigate('/admin');
-          }, 500);
-        }
-      } catch (err) {
-        console.error('Error checking authentication:', err);
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // User is already logged in, redirect to admin dashboard
+        navigate('/admin');
       }
     };
     
-    checkAuth();
-  }, [navigate, user]);
+    checkSession();
+  }, [navigate]);
 
-  // Login function using Supabase
+  // Handle login submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Recheck auth status
-    const isAuthenticated = await SupabaseAuth.isAuthenticated();
-    if (isAuthenticated) {
-      navigate('/admin');
-      return;
-    }
-    
+    // Validate inputs
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
     }
 
-    setIsSubmitting(true);
-    setError(null);
-    setLoginStatus('Logging in...');
-
     try {
-      // Login using Supabase
-      const response = await SupabaseAuth.login(email, password);
-      
-      if (response) {
-        // Set UI success state
-        setDirectLoginSuccess(true);
-        setLoginStatus('Login successful, redirecting...');
-        
-        // Redirect after a brief delay
-        setTimeout(() => {
-          navigate('/admin');
-        }, 500);
-      }
-      
-    } catch (err: any) {
-      console.error('Login failed:', err);
-      
-      // Special handling for rate limit errors
-      if (err?.status === 429) {
-        setError('Rate limit reached. Try again in a moment, or refresh the page.');
-      } else {
-        setError(err?.message || 'Login failed. Check credentials and try again.');
-      }
-      
-      setLoginStatus(null);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Create demo account in Supabase if needed
-  const handleDemoLogin = async () => {
-    try {
+      // Start login process
       setIsSubmitting(true);
-      setLoginStatus('Setting up demo access...');
+      setError(null);
+      setMessage('Logging in...');
       
-      // Try to login first
-      try {
-        await SupabaseAuth.login('admin@admin.com', 'admin123');
-        setDirectLoginSuccess(true);
-        setLoginStatus('Login successful, redirecting...');
-        
-        setTimeout(() => {
-          navigate('/admin');
-        }, 500);
-        return;
-      } catch (loginErr) {
-        // If login fails, try to create the user
-        try {
-          await SupabaseAuth.createUser('admin@admin.com', 'admin123', 'Admin User');
-          // Then login
-          await SupabaseAuth.login('admin@admin.com', 'admin123');
-          
-          setDirectLoginSuccess(true);
-          setLoginStatus('Demo account created! Redirecting...');
-          
-          setTimeout(() => {
-            navigate('/admin');
-          }, 500);
-        } catch (createErr: any) {
-          if (createErr.message?.includes('already exists')) {
-            setError('Admin account exists but credentials may be different. Please check and try again.');
-          } else {
-            throw createErr;
-          }
-        }
+      // Attempt to sign in with Supabase
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      // Handle login errors
+      if (loginError) {
+        throw loginError;
       }
+      
+      // Validate login response
+      if (!data || !data.user) {
+        throw new Error('Login failed - no user data returned');
+      }
+      
+      // Set basic localStorage flags
+      localStorage.setItem('adminLoggedIn', 'true');
+      
+      // Show success message and redirect
+      setMessage('Login successful! Redirecting to dashboard...');
+
+      // Navigate to admin dashboard
+      navigate('/admin');
+      
     } catch (err: any) {
-      console.error('Demo login failed:', err);
-      setError(err?.message || 'Failed to set up demo access. Please try again.');
-      setLoginStatus(null);
+      // Handle specific error cases
+      if (err.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please try again.');
+      } else if (err?.status === 429) {
+        setError('Too many login attempts. Please wait a moment and try again.');
+      } else {
+        setError(err?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -148,83 +94,59 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {directLoginSuccess ? (
-            <div className="flex flex-col items-center py-6">
-              <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-              <h2 className="text-xl font-semibold text-green-400 mb-2">Login Successful!</h2>
-              <p className="text-center text-gray-400">Redirecting to admin dashboard...</p>
-            </div>
-          ) : (
-            <form onSubmit={handleLogin}>
-              <div className="space-y-4">
-                {error && (
-                  <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      {error}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                {loginStatus && (
-                  <Alert className="bg-blue-900/20 border-blue-900 text-blue-300">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>{loginStatus}</AlertDescription>
-                  </Alert>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-200">Email</Label>
-                  <Input
-                    id="email"
-                    type="text"
-                    placeholder="admin@admin.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-hypnotic-dark border-gray-700 text-white"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-gray-200">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-hypnotic-dark border-gray-700 text-white"
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Button
-                    type="submit"
-                    className="w-full bg-hypnotic-accent hover:bg-hypnotic-accent/80 text-black font-medium"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Logging in...' : 'Login to Admin Panel'}
-                  </Button>
-                  
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="w-full border-gray-700 hover:bg-gray-800 text-gray-300"
-                    onClick={handleDemoLogin}
-                  >
-                    Create Demo Account
-                  </Button>
-                </div>
+          <form onSubmit={handleLogin}>
+            <div className="space-y-4">
+              {error && (
+                <Alert variant="destructive" className="bg-red-900/20 border-red-900 text-red-300">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {message && (
+                <Alert className="bg-blue-900/20 border-blue-900 text-blue-300">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>{message}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-200">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-hypnotic-dark border-gray-700 text-white"
+                  required
+                />
               </div>
-            </form>
-          )}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-200">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-hypnotic-dark border-gray-700 text-white"
+                  required
+                />
+              </div>
+              
+              <Button
+                type="submit"
+                className="w-full bg-hypnotic-accent hover:bg-hypnotic-accent/80 text-black font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Logging in...' : 'Login to Admin Panel'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-start text-sm text-gray-400 border-t border-gray-800 pt-4">
-          <p className="font-semibold mb-1">Default Admin Credentials:</p>
-          <p>• Email: admin@admin.com</p>
-          <p>• Password: admin123</p>
-          <p className="mt-2 text-xs">Use the demo account button if you don't have an account yet.</p>
-        </CardFooter>
       </Card>
     </div>
   );
