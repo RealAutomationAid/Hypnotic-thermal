@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./lib/AuthContext";
 import TestLoginPage from "./pages/dev/test-login";
 import TestSupabase from "./pages/dev/test-supabase";
+import SupabaseAuthTest from "./pages/dev/supabase-auth-test";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             {/* Dev Test Routes */}
             <Route path="/dev/test-login" element={<TestLoginPage />} />
             <Route path="/dev/test-supabase" element={<TestSupabase />} />
+            <Route path="/dev/supabase-auth-test" element={<SupabaseAuthTest />} />
             
             {/* Protected Admin Routes */}
             <Route 

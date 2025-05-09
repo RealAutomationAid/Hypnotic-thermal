@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -12,38 +12,62 @@ export const ProtectedRoute = ({
   redirectPath = '/login',
 }: ProtectedRouteProps) => {
   const location = useLocation();
-  const { user, loading, checkAuth } = useAuth();
-  const [isVerifying, setIsVerifying] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const verifyAuth = async () => {
+    const checkSession = async () => {
       try {
-        setIsVerifying(true);
-        await checkAuth();
+        // Get the current Supabase session
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          // Session exists, verify the user
+          const { data: userData } = await supabase.auth.getUser();
+          
+          if (userData.user) {
+            // Valid user, mark as authenticated
+            localStorage.setItem('adminLoggedIn', 'true');
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        } else {
+          // No session, not authenticated
+          setIsAuthenticated(false);
+          localStorage.removeItem('adminLoggedIn');
+        }
       } catch (error) {
-        console.error('Auth verification failed:', error);
+        console.error('Error checking authentication:', error);
+        setIsAuthenticated(false);
       } finally {
-        setIsVerifying(false);
+        setLoading(false);
       }
     };
 
-    verifyAuth();
-  }, [checkAuth]);
+    checkSession();
+  }, []);
 
   // Show loading state while checking authentication
-  if (loading || isVerifying) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-screen bg-hypnotic-dark">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hypnotic-accent mb-4"></div>
+          <p className="text-hypnotic-accent">Verifying authentication...</p>
+        </div>
       </div>
     );
   }
 
-  // If user is not authenticated, redirect to login
-  if (!user) {
+  // If not authenticated, redirect to login
+  if (!isAuthenticated) {
+    // Clear the login flag
+    localStorage.removeItem('adminLoggedIn');
+    
     return <Navigate to={redirectPath} state={{ from: location }} replace />;
   }
 
-  // If user is authenticated, render the protected content
+  // If authenticated, render the protected content
   return <>{children}</>;
 }; 
